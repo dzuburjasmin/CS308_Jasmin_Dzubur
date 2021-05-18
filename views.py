@@ -4,6 +4,9 @@ from django.http import Http404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.contrib.auth.models import User
+from rest_framework import permissions
+from books.permissions import IsOwnerOrReadOnly
 
 
 class BookList(APIView):
@@ -22,10 +25,15 @@ class BookList(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+ permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 class BookDetail(APIView):
     """
     Retrieve, update or delete a snippet instance.
     """
+
     def get_object(self, pk):
         try:
             return Book.objects.get(pk=pk)
@@ -49,3 +57,14 @@ class BookDetail(APIView):
         book = self.get_object(pk)
         book.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+   permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+
+class AuthorList(generics.ListAPIView):
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+
+
+class AuthorDetail(generics.RetrieveAPIView):
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
